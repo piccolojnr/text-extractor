@@ -66,6 +66,45 @@ def extract_text(file_path, enable_ocr=False) -> tuple[str, int]:
         return f"Error processing file {file_path}: {e}", 500
 
 
+def extract_text_from_files(files, enable_ocr=False, max_workers=None):
+    """Extract text from multiple uploaded files concurrently."""
+    try:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_file = {
+                executor.submit(extract_text, file_path, enable_ocr): file_path
+                for file_path in files
+            }
+
+            results = []
+            for future in as_completed(future_to_file):
+                file_path = future_to_file[future]
+                try:
+                    extracted_text, status_code = future.result()
+                    results.append(
+                        {
+                            "filename": Path(file_path).name,
+                            "extracted_text": extracted_text,
+                            "status_code": status_code,
+                        }
+                    )
+                except Exception as e:
+                    logger.error(f"Error processing {file_path}: {e}")
+                    results.append(
+                        {
+                            "filename": Path(file_path).name,
+                            "extracted_text": f"Error processing {file_path}: {e}",
+                            "status_code": 500,
+                        }
+                    )
+
+        return results, 200
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return [
+            {"filename": "Error", "extracted_text": str(e), "status_code": 500}
+        ], 500
+
+
 def save_text_to_file(text, output_path):
     """Save extracted text to a file."""
     try:
