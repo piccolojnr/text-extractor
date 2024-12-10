@@ -1,10 +1,10 @@
 PyPDF2
+fitz
 PyMuPDF
 python-pptx
 python-docx
 pytesseract
 Pillow
-fitz
 fastapi
 uvicorn
 python-multipart
