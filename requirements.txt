@@ -1,6 +1,5 @@
 PyPDF2
 fitz
-PyMuPDF
 python-pptx
 python-docx
 pytesseract
