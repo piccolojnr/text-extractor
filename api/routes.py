@@ -1,11 +1,15 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, logger
+import json
+from fastapi import APIRouter, Request, UploadFile, File, Form, HTTPException
+from fastapi.responses import FileResponse, StreamingResponse
 from pathlib import Path
 from api.start import (
     SUPPORTED_EXTENSIONS,
     extract_text as extract_text_from_file,
     extract_text_from_files,
 )
+from utils.create_ppts import create_pptx_from_flashcards, styles
 from utils.file_utils import get_file_extension
+from io import BytesIO
 
 router = APIRouter()
 
@@ -85,3 +89,35 @@ async def extract_text_batch(
         return {"results": results}, status_code
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/generate-pptx/")
+async def generate_pptx(request: Request):
+
+    # Parse the request body as JSON
+    body = await request.json()
+    flashcards = body.get("flashcards", [])
+    style = body.get("style", "classic")
+
+    # # Create the PowerPoint presentation
+    presentation = create_pptx_from_flashcards(flashcards, style)
+
+    # # Save the presentation to a BytesIO stream
+    pptx_stream = BytesIO()
+    presentation.save(pptx_stream)
+    pptx_stream.seek(0)
+
+    # Return the PPTX file as a response
+    return StreamingResponse(
+        pptx_stream,
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        headers={"Content-Disposition": "attachment; filename=flashcards.pptx"},
+    )
+
+
+@router.get("/styles/")
+async def get_styles():
+    """
+    Get a list of supported styles for creating flashcards.
+    """
+    return {"styles": list(styles.keys())}
